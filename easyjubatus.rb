@@ -35,6 +35,12 @@ def open_bazil_csv(path)
   end
 end
 
+def predict(client, datum)
+  res = client.classify(options[:name], [datum])[0]
+  max = res.max{ |x, y| x[1] <=> y[1] }
+  return max[0] if max != nil
+end
+
 class EasyJubatus < Thor
   class_option :host, :aliases => "-h", :desc => "Host name of jubatus server", :type => :string, :default => "127.0.0.1"
   class_option :port, :aliases => "-p", :desc => "Port number of jubatus server", :type => :numeric, :default => 9199
@@ -54,13 +60,41 @@ class EasyJubatus < Thor
     correct = 0
     total = 0
     open_bazil_csv(file) do |label, datum|
-      res = client.classify(options[:name], [datum])[0]
-      max = res.max{ |x, y| x[1] <=> y[1]}
-      correct += 1 if max and max[0] == label
+      correct += 1 if predict(client, datum) == label
       total += 1
     end
     accuracy = 100.0 * correct / total
     puts "#{accuracy}% (#{correct} / #{total})"
+  end
+
+  desc "cv", "Run cross validation."
+  method_option :fold, :aliases => "-f", :desc => "Number of folds", :type => :numeric, :default => 10
+  def cv(file)
+    client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
+    accuracies = []
+    fold = options[:fold]
+    (0...fold).each do |index|
+      i = 0
+      open_bazil_csv(file) do |label, datum|
+        client.train(options[:name], [[label, datum]]) if i % fold != index
+        i += 1
+      end
+      correct = 0
+      total = 0
+      i = 0
+      open_bazil_csv(file) do |label, datum|
+        if i % fold == index
+          correct += 1 if predict(client, datum) == label
+          total += 1
+        end
+        i += 1
+      end
+      accuracy = 100.0 * correct / total
+      puts accuracy
+      accuracies << accuracy
+    end
+    average = accuracies.reduce(:+) / accuracies.length
+    puts "Average accuracy: #{average}"
   end
 
   desc "save", "Save the current model."
