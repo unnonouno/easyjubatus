@@ -64,7 +64,7 @@ class EasyJubatus < Thor
   class_option :port, :aliases => "-p", :desc => "Port number of jubatus server", :type => :numeric, :default => 9199
   class_option :name, :aliases => "-n", :desc => "Cluster name of jubatus server", :type => :string, :default => ""
 
-  desc "train", "Train Jubatus with given labeled data."
+  desc "train FILE_NAME", "Train Jubatus with given labeled data."
   method_option :filetype, :aliases => "-t", :desc => "File type (csv|libsvm)", :type => :string, :default => "csv"
   def train(file)
     client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
@@ -73,7 +73,7 @@ class EasyJubatus < Thor
     end
   end
 
-  desc "eval", "Evaluate Jubatus with given labeled data."
+  desc "eval FILE_NAME", "Evaluate Jubatus with given labeled data."
   method_option :filetype, :aliases => "-t", :desc => "File type (csv|libsvm)", :type => :string, :default => "csv"
   def eval(file)
     client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
@@ -89,13 +89,13 @@ class EasyJubatus < Thor
     puts "#{accuracy}% (#{correct} / #{total})"
   end
 
-  desc "save", "Save the current model."
+  desc "save MODEL_NAME", "Save the current model."
   def save(name)
     client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
     client.save(options[:name], name)
   end
 
-  desc "load", "Load the current model."
+  desc "load MODEL_NAME", "Load the current model."
   def load(name)
     client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
     client.load(options[:name], name)
