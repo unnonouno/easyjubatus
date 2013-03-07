@@ -45,6 +45,8 @@ train
 ``FILE_NAME`` で指定されたラベル付きデータセットを利用して学習を行います。
 ラベル付きデータセットのフォーマットは、Bazilフォーマットです。
 
+-t FILETYPE, --filetype=FILETYPE  ``FILE_NAME`` で渡すファイルのフォーマットを指定します。csv, libsvmから選びます。(csv)
+
 
 eval
 ----
@@ -57,6 +59,7 @@ eval
 実行が終わると、予測ラベルと正解のラベルを比較し、正解率を表示します。
 ラベル付きデータセットのフォーマットは、Bazilフォーマットです。
 
+-t FILETYPE, --filetype=FILETYPE  ``FILE_NAME`` で渡すファイルのフォーマットを指定します。csv, libsvmから選びます。(csv)
 
 save
 ----
