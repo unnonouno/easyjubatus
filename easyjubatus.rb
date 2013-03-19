@@ -75,6 +75,7 @@ class EasyJubatus < Thor
     fold = options[:fold]
     (0...fold).each do |index|
       i = 0
+      client.clear(options[:name])
       open_bazil_csv(file) do |label, datum|
         client.train(options[:name], [[label, datum]]) if i % fold != index
         i += 1
