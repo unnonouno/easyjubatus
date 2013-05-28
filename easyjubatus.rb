@@ -22,7 +22,7 @@ def open_bazil_csv(path)
       num_values = []
       (1...types.length).each do |i|
         if types[i] == "string"
-          string_values << [keys[i], row[i]]
+          string_values << [keys[i], row[i].to_s]
         elsif types[i] == "number"
           num_values << [keys[i], row[i].to_f]
         else
