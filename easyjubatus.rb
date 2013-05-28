@@ -57,6 +57,7 @@ def open_data(type, path, &block)
   else
     raise "unsupported file type: \"#{type}\""
   end
+end
 
 def predict(client, datum)
   res = client.classify(options[:name], [datum])[0]
