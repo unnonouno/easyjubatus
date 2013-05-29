@@ -22,9 +22,9 @@ def open_bazil_csv(path)
       num_values = []
       (1...types.length).each do |i|
         if types[i] == "string"
-          string_values << [keys[i], row[i].to_s]
+          string_values << [keys[i].to_s, row[i].to_s]
         elsif types[i] == "number"
-          num_values << [keys[i], row[i].to_f]
+          num_values << [keys[i].to_s, row[i].to_f]
         else
           raise "unsupported data type: #{types[i]}"
         end
