@@ -30,7 +30,7 @@ def open_bazil_csv(path)
         end
       end
 
-      yield row[0], Jubatus::Classifier::Datum.new(string_values, num_values)
+      yield row[0], Jubatus::Classifier::Datum.new(string_values, num_values), row
     end
   end
 end
@@ -122,6 +122,18 @@ class EasyJubatus < Thor
     end
     average = accuracies.reduce(:+) / accuracies.length
     puts "Average accuracy: #{average}"
+  end
+
+  desc "pred", "Predict labels."
+  def pred(file)
+    client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
+    CSV do |out|
+      open_bazil_csv(file) do |label, datum, row|
+        label = predict(client, datum)
+        row[0] = label
+        out << row
+      end
+    end
   end
 
   desc "save MODEL_NAME", "Save the current model."
