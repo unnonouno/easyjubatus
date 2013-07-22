@@ -49,11 +49,40 @@ def open_libsvm(path)
   end
 end
 
+def open_line_json(path)
+  require 'json'
+  open(path).each_line do |line|
+    hash = JSON.parse(line)
+    raise "At least one column is required for annotation" if hash.size == 0
+    raise "Data must have annotation column" if hash.has_key?("annotation") == false
+    string_values = []
+    num_values = []
+      hash.keys.each do |key|
+      if key == "annotation"
+        next
+      end
+
+      case hash[key]
+      when String
+        string_values << [key, hash[key].to_s]
+      when Fixnum, Float, Bignum
+        num_values << [key, hash[key].to_f]
+      else
+        raise "unsupported data type: #{hash[key].class}"
+      end
+    end
+
+    yield hash["annotation"], Jubatus::Classifier::Datum.new(string_values, num_values), hash.keys, hash.values
+  end
+end
+
 def open_data(type, path, &block)
   if type == "csv"
     open_bazil_csv(path, &block)
   elsif type == "libsvm"
     open_libsvm(path, &block)
+  elsif type == "json"
+    open_line_json(path, &block)
   else
     raise "unsupported file type: \"#{type}\""
   end
@@ -95,6 +124,7 @@ class EasyJubatus < Thor
 
   desc "cv", "Run cross validation."
   method_option :fold, :aliases => "-f", :desc => "Number of folds", :type => :numeric, :default => 10
+  method_option :filetype, :aliases => "-t", :desc => "File type (csv|libsvm)", :type => :string, :default => "csv"
   def cv(file)
     client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
     accuracies = []
@@ -102,14 +132,14 @@ class EasyJubatus < Thor
     (0...fold).each do |index|
       i = 0
       client.clear(options[:name])
-      open_bazil_csv(file) do |label, datum|
+      open_data(options[:filetype], file) do |label, datum|
         client.train(options[:name], [[label, datum]]) if i % fold != index
         i += 1
       end
       correct = 0
       total = 0
       i = 0
-      open_bazil_csv(file) do |label, datum|
+      open_data(options[:filetype], file) do |label, datum|
         if i % fold == index
           correct += 1 if predict(client, datum) == label
           total += 1
