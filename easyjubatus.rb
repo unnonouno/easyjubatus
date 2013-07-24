@@ -5,6 +5,87 @@ require 'thor'
 require 'csv'
 require 'jubatus/classifier/client'
 
+class ConfusionMatrix
+  attr_accessor :expect, :actual, :matrix
+
+  def initialize()
+    @expect = Hash.new(0)
+    @actual = Hash.new(0)
+    @matrix = Hash.new(0)
+  end
+
+  def push(expect, actual, count = 1)
+    @expect[expect] += count
+    @actual[actual] += count
+    @matrix[[expect, actual]] += count
+  end
+
+  def calc_recall(label)
+    if @expect.include?(label)
+      @matrix[[label, label]].to_f / @expect[label]
+    else
+      0
+    end
+  end
+
+  def calc_precision(label)
+    if @actual.include?(label)
+      @matrix[[label, label]].to_f / @actual[label]
+    else
+      0
+    end
+  end
+
+  def calc_accuracy()
+    correct = 0
+    total = 0
+    @expect.keys.each { |l|
+      correct += @matrix[[l, l]]
+      total += @expect[l]
+    }
+    if total == 0
+      0
+    else
+      correct.to_f / total
+    end
+  end
+
+  def get_labels()
+    @expect.keys.sort
+  end
+
+  def show()
+    labels = @expect.keys.sort
+    print "E\\A\t"
+    labels.each do |key|
+      print key
+      print "\t"
+    end
+    puts
+
+    labels.each do |key_expect|
+      print key_expect
+      print "\t|"
+      labels.each do |key_actual|
+        print @matrix[[key_expect, key_actual]]
+        print "\t"
+      end
+      puts
+    end
+  end
+
+  def +(matrix)
+    m = ConfusionMatrix.new
+    @matrix.each { |pair, count|
+      m.push(pair[0], pair[1], count)
+    }
+    matrix.matrix.each { |pair, count|
+      m.push(pair[0], pair[1], count)
+    }
+    return m
+  end
+end
+
 def open_bazil_csv(path)
   types = nil
   keys = nil
@@ -128,6 +209,7 @@ class EasyJubatus < Thor
   def cv(file)
     client = Jubatus::Classifier::Client::Classifier.new(options[:host], options[:port])
     accuracies = []
+    matrices = []
     fold = options[:fold]
     (0...fold).each do |index|
       i = 0
@@ -136,22 +218,37 @@ class EasyJubatus < Thor
         client.train(options[:name], [[label, datum]]) if i % fold != index
         i += 1
       end
-      correct = 0
-      total = 0
       i = 0
+      matrix = ConfusionMatrix.new
       open_data(options[:filetype], file) do |label, datum|
         if i % fold == index
-          correct += 1 if predict(client, datum) == label
-          total += 1
+          actual = predict(client, datum)
+          matrix.push(label, actual)
         end
         i += 1
       end
-      accuracy = 100.0 * correct / total
-      puts accuracy
+      accuracy = matrix.calc_accuracy * 100.0
+      puts "[Fold #%d] Accuracy: %.2f%%" % [index + 1, accuracy]
+      matrix.get_labels.each { |label|
+        prec = matrix.calc_precision(label) * 100
+        recall = matrix.calc_recall(label) * 100
+        print " %s: (prec:%.2f%%, recall:%.2f%%)" % [label, prec, recall]
+      }
+      puts
       accuracies << accuracy
+      matrices << matrix
     end
     average = accuracies.reduce(:+) / accuracies.length
-    puts "Average accuracy: #{average}"
+    puts
+    puts "Average accuracy: %.2f%%" % average
+    micro_avg_matrix = matrices.reduce(:+)
+    puts "Micro-average of precision/recall"
+    micro_avg_matrix.get_labels.each { |label|
+      prec = micro_avg_matrix.calc_precision(label) * 100
+      recall = micro_avg_matrix.calc_recall(label) * 100
+      print " %s: (prec:%.2f%%, recall:%.2f%%)" % [label, prec, recall]
+    }
+    puts
   end
 
   desc "pred", "Predict labels."
